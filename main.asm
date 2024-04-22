@@ -13,7 +13,7 @@ DATA_SEG segment
     point2 point <0, 0>
 
     rectangle_height dw 100
-    rectangle_length dw 50
+    rectangle_length dw 100
 DATA_SEG ends
 
 CODE_SEG segment
@@ -26,7 +26,7 @@ main:
     mov ax, 0012h; Установка видеорежима
     int 10h
 
-    call draw_rectangle_hollow
+    call draw_rectangle_filled
 
     mov ah, 4CH; Завершение программы
     mov al, 0
@@ -36,6 +36,7 @@ main:
 ;   point1: левый верхний угол прямоугольника
 ;   rectangle_lenght: длина прямоугольника
 ;   rectangle_height: высота прямоугольника
+;   pixel_color: цвет ребер прямоугольника
 ; Результат:
 ;   Нет
 ; Регистры:
@@ -68,6 +69,33 @@ draw_rectangle_hollow proc near
     ret
 draw_rectangle_hollow endp
 
+; Аргументы:
+;   point1: левый верхний угол прямоугольника
+;   rectangle_lenght: длина прямоугольника
+;   rectangle_height: высота прямоугольника
+;   pixel_color: цвет заливки и ребер прямоугольника
+; Результат:
+;   Нет
+; Регистры:
+;   ax: промежуточные вычисления координат
+;   cx: итератор цикла отрисовки
+draw_rectangle_filled proc near
+    push ax cx
+    mov ax, point1.x; Сдвиг x-координаты второй точки на длину прямоугольника
+    add ax, rectangle_length
+    mov point2.x, ax
+    mov ax, point1.y; Обе точки лежат на одной y-координате
+    mov point2.y, ax
+    mov cx, rectangle_height; Количетсво итераций отрисовки линий равно высоте прямоугольника
+    @draw_rectangle_filled:
+        call draw_line_along_x
+        inc point1.y; Сдвигаем y-координаты обеих точек на 1 вниз
+        inc point2.y
+    loop @draw_rectangle_filled
+
+    pop cx ax
+    ret
+draw_rectangle_filled endp
 
 ; Аргументы:
 ;   point1, point2: точки начала и конца отрезка соответственно

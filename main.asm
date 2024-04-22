@@ -9,8 +9,8 @@ DATA_SEG segment
     point ends
    
     pixel_color db 4
-    point1 point <100, 100>
-    point2 point <200, 450>
+    point1 point <200, 200>
+    point2 point <100, 200>
 
     rectangle_height dw 0
     rectangle_length dw 0
@@ -23,16 +23,60 @@ main:
     mov ax, DATA_SEG; Сохранение адреса сегмента данных
     mov ds, ax
 
-    ; mov ax, 0012h; Установка видеорежима
-    ; int 10h
-    
+    mov ax, 0012h; Установка видеорежима
+    int 10h
+
+    call draw_line_along_x
+
     mov ah, 4CH; Завершение программы
     mov al, 0
     int 21h
 
 ; Аргументы:
+;   point1, point2: точки начала и конца отрезка соответственно
+;   pixel_color: цвет отрезка
+; Результат:
+;   Нет
+; Регистры:
+;   ax, bx: сравнение относительного положения точек
+;   si: координата отрисовки отрезка
+;   cx: итератор цикла отрисовки
+draw_line_along_x proc near
+    push si ax bx cx
+    mov ax, point2.x
+    mov bx, point1.x
+    ; Сравнение относительного положения точек
+    cmp ax, bx
+    jg @point1_to_point2; Переход по метке, если x-координата point2 больше x-координаты point1
+    jmp @point2_to_point1
+    ; Отрисовка отрезка от точки point1 до point2
+    @point1_to_point2:
+        mov si, point1.x; point1.x - точка начала отрезка
+        mov cx, point2.x
+        sub cx, point1.x; cx - длина отрезка
+        jmp @point_comparison_exit
+    ; Отрисовка отрезка от точки point2 до point1
+    @point2_to_point1:
+        mov si, point2.x; point2.x - точка начала отрезка
+        mov cx, point1.x
+        sub cx, point2.x; cx - длина отрезка
+        jmp @point_comparison_exit
+    @point_comparison_exit:
+    
+    mov di, point1.y; y-кооридната отрезка статическая, поэтому устанавливается один раз вне цикла
+    
+    @draw_line_along_x_loop:
+        call draw_pixel
+        inc si
+    loop @draw_line_along_x_loop
+    pop cx bx ax si
+    ret
+draw_line_along_x endp
+
+; Аргументы:
 ;   si: x-координата рисуемого пикселя
 ;   di: y-координата рисуемого пикселя
+;   pixel_color: цвет пикселя
 ; Результат:
 ;   Нет
 draw_pixel proc near

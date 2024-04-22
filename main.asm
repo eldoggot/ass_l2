@@ -9,8 +9,8 @@ DATA_SEG segment
     point ends
    
     pixel_color db 4
-    point1 point <200, 200>
-    point2 point <100, 200>
+    point1 point <200, 100>
+    point2 point <200, 200>
 
     rectangle_height dw 0
     rectangle_length dw 0
@@ -26,7 +26,7 @@ main:
     mov ax, 0012h; Установка видеорежима
     int 10h
 
-    call draw_line_along_x
+    call draw_line_along_y
 
     mov ah, 4CH; Завершение программы
     mov al, 0
@@ -39,10 +39,11 @@ main:
 ;   Нет
 ; Регистры:
 ;   ax, bx: сравнение относительного положения точек
-;   si: координата отрисовки отрезка
+;   si: x-координата отрисовки отрезка
+;   di: y-координата отрисовки отерзка
 ;   cx: итератор цикла отрисовки
 draw_line_along_x proc near
-    push si ax bx cx
+    push si di ax bx cx
     mov ax, point2.x
     mov bx, point1.x
     ; Сравнение относительного положения точек
@@ -69,9 +70,52 @@ draw_line_along_x proc near
         call draw_pixel
         inc si
     loop @draw_line_along_x_loop
-    pop cx bx ax si
+
+    pop cx bx ax di si
     ret
 draw_line_along_x endp
+
+; Аргументы:
+;   point1, point2: точки начала и конца отрезка соответственно
+;   pixel_color: цвет отрезка
+; Результат:
+;   Нет
+; Регистры:
+;   ax, bx: сравнение относительного положения точек
+;   si: x-коориданта отрисовки отрезка
+;   di: y-координата отрисовки отрезка
+;   cx: итератор цикла отрисовки
+draw_line_along_y proc near
+    push si di ax bx cx
+    mov ax, point2.y
+    mov bx, point1.y
+    ; Сравнение относительного положения точек
+    cmp ax, bx
+    jg @point1_to_point2_; Переход по метке, если y-координата point2 больше y-координаты point1
+    jmp @point2_to_point1_
+    ; Отрисовка отрезка от точки point1 до point2
+    @point1_to_point2_:
+        mov di, point1.y; point1.y - точка начала отрезка
+        mov cx, point2.y
+        sub cx, point1.y; cx - длина отрезка
+        jmp @point_comparison_exit_
+    ; Отрисовка отрезка от точки point2 до point1
+    @point2_to_point1_:
+        mov di, point2.y; point2.y - точка начала отрезка
+        mov cx, point1.y
+        sub cx, point2.y; cx - длина отрезка
+        jmp @point_comparison_exit_
+    @point_comparison_exit_:
+    
+    mov si, point1.x; y-кооридната отрезка статическая, поэтому устанавливается один раз вне цикла
+    @draw_line_along_y_loop_:
+        call draw_pixel
+        inc di
+    loop @draw_line_along_y_loop_
+    
+    pop cx bx ax di si
+    ret
+draw_line_along_y endp
 
 ; Аргументы:
 ;   si: x-координата рисуемого пикселя

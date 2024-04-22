@@ -9,11 +9,11 @@ DATA_SEG segment
     point ends
    
     pixel_color db 4
-    point1 point <200, 100>
-    point2 point <200, 200>
+    point1 point <100, 100>
+    point2 point <0, 0>
 
-    rectangle_height dw 0
-    rectangle_length dw 0
+    rectangle_height dw 100
+    rectangle_length dw 50
 DATA_SEG ends
 
 CODE_SEG segment
@@ -26,11 +26,48 @@ main:
     mov ax, 0012h; Установка видеорежима
     int 10h
 
-    call draw_line_along_y
+    call draw_rectangle_hollow
 
     mov ah, 4CH; Завершение программы
     mov al, 0
     int 21h
+
+; Аргументы:
+;   point1: левый верхний угол прямоугольника
+;   rectangle_lenght: длина прямоугольника
+;   rectangle_height: высота прямоугольника
+; Результат:
+;   Нет
+; Регистры:
+;   ax: промежуточные вычисления координат
+draw_rectangle_hollow proc near
+    push ax
+    mov ax, point1.x; Сдвиг x-координаты второй точки на длину прямоугольника
+    add ax, rectangle_length
+    mov point2.x, ax 
+    mov ax, point1.y; Обе точки лежат на одной y-координате
+    mov point2.y, ax
+    call draw_line_along_x; Отрисовка верхнего ребра
+    
+    mov ax, rectangle_height
+    add point1.y, ax; Сдвиг точек по y-координате на высоту прямоугольника
+    add point2.y, ax
+    call draw_line_along_x; Отрисовка нижнего ребра
+
+    mov ax, rectangle_height
+    sub point1.y, ax; Возврат в левый верхний угол, т.к. процедура отрисовки может рисовать только снизу вверх
+    mov ax, point1.x; Обе точки лежат на одной x-координате
+    mov point2.x, ax
+    call draw_line_along_y; Отрисовка левого ребра
+    
+    mov ax, rectangle_length
+    add point1.x, ax; Сдвиг точек по x-координате на длину прямоугольника
+    add point2.x, ax
+    call draw_line_along_y; Отрисовка правого ребра
+    pop ax
+    ret
+draw_rectangle_hollow endp
+
 
 ; Аргументы:
 ;   point1, point2: точки начала и конца отрезка соответственно
@@ -107,7 +144,7 @@ draw_line_along_y proc near
         jmp @point_comparison_exit_
     @point_comparison_exit_:
     
-    mov si, point1.x; y-кооридната отрезка статическая, поэтому устанавливается один раз вне цикла
+    mov si, point1.x; x-кооридната отрезка статическая, поэтому устанавливается один раз вне цикла
     @draw_line_along_y_loop_:
         call draw_pixel
         inc di

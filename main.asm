@@ -9,11 +9,15 @@ DATA_SEG segment
     point ends
    
     pixel_color db 4
-    point1 point <100, 100>
-    point2 point <0, 0>
+    point1 point <100, 50>
+    point2 point <100, 100>
 
     rectangle_height dw 100
     rectangle_length dw 100
+
+    delta_x dw 0
+    delta_y dw 0
+    err dw 0
 DATA_SEG ends
 
 CODE_SEG segment
@@ -26,11 +30,45 @@ main:
     mov ax, 0012h; Установка видеорежима
     int 10h
 
-    call draw_rectangle_filled
+    call draw_line
 
     mov ah, 4CH; Завершение программы
     mov al, 0
     int 21h
+
+; Аргументы:
+;   point1: левая точка отрезка
+;   point2: правая точка отрезка
+;   pixel_color: цвет отрезка
+; Результат:
+;   Нет
+; Регистры:
+;   ax, bx: сравнение относительного положения точек для оптимизации
+draw_line proc near
+    push ax bx
+    mov ax, point1.x
+    mov bx, point2.x
+    cmp ax, bx; Если точки лежат на одной x-координате, вызывается специальная процедура 
+    je @points_on_the_same_x
+    
+    mov ax, point1.y
+    mov bx, point2.y
+    cmp ax, bx; Если точки лежат на одной y-координате, вызывается специальная процедура 
+    je @points_on_the_same_y
+    jmp @draw_line_exit
+    
+    @points_on_the_same_x:
+        call draw_line_along_y; x-координата неизменна, так что вызывается процедура отрисовки вдоль y-координаты
+        jmp @draw_line_exit
+
+    @points_on_the_same_y:
+        call draw_line_along_x; y-координата неизменна, так что вызывается процедура отрисовки вдоль x-координаты
+        jmp @draw_line_exit
+
+    @draw_line_exit:
+    pop bx ax
+    ret
+draw_line endp
 
 ; Аргументы:
 ;   point1: левый верхний угол прямоугольника

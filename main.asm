@@ -15,6 +15,8 @@ DATA_SEG segment
     rectangle_height dw 100
     rectangle_length dw 100
 
+    color_panel_size dw 20
+
     x_incr dw 0
     y_incr dw 0
     err dw 0
@@ -30,11 +32,62 @@ main:
     mov ax, 0012h; Установка видеорежима
     int 10h
 
-    call draw_line
+    mov ax, 0; Инициализация мыши
+    int 33h
+    test ax, ax; Проверка инициализации
+    jz program_end; Если мышь не инициализирована, программа завершается
+
+    mov ax, 0Ch; Установка обработчика событий иыши
+    push cs
+    pop es
+
+    mov cx, 001010b; Установка кнопок мыши
+    mov dx, offset mouse_handler; Адрес обработчика мыши
+    int 33h
+
+    mov ax, 1; Показать курсор мыши
+    int 33h
+
+    mov ah,0; Ожидание нажатия клавиши
+    int 16h
+
+    mov ax, 0Ch; Удаление обработчика мыши
+    mov cx, 0 
+    int 33h
+
+    program_end:
 
     mov ah, 4CH; Завершение программы
     mov al, 0
     int 21h
+
+mouse_handler:
+    push cx dx
+    mov ax, 0900h
+
+    cmp bx, 1; bx = 1 -> нажата левая кнопка
+    jz @LMB_click
+    
+    cmp bx, 2; bx = 3 -> нажата правая кнопка
+    jz @RMB_click
+
+    jmp @exit_handler
+
+    @LMB_click:
+        mov point1.x, cx
+        mov point1.y, dx
+        call draw_rectangle_hollow
+        jmp @exit_handler
+
+    @RMB_click:
+        mov point1.x, cx
+        mov point1.y, dx
+        call draw_rectangle_filled
+        jmp @exit_handler
+    
+    @exit_handler:
+        pop dx cx
+        retf
 
 ; Аргументы:
 ;   point1: левая точка отрезка
@@ -91,7 +144,7 @@ draw_line proc near
         dy_neg:
             shl ax, 1
             shl bx, 1
-            call draw_pixel
+            ; call draw_pixel
             cmp ax, bx
             jna dx_less_than_dy
             mov cx, ax
@@ -135,7 +188,7 @@ draw_line endp
 
 ; Аргументы:
 ;   point1: левый верхний угол прямоугольника
-;   rectangle_lenght: длина прямоугольника
+;   rectangle_length: длина прямоугольника
 ;   rectangle_height: высота прямоугольника
 ;   pixel_color: цвет ребер прямоугольника
 ; Результат:
@@ -144,6 +197,10 @@ draw_line endp
 ;   ax: промежуточные вычисления координат
 draw_rectangle_hollow proc near
     push ax
+    push word ptr point1.x
+    push word ptr point1.y
+    push word ptr point2.x
+    push word ptr point2.y
     mov ax, point1.x; Сдвиг x-координаты второй точки на длину прямоугольника
     add ax, rectangle_length
     mov point2.x, ax 
@@ -166,13 +223,17 @@ draw_rectangle_hollow proc near
     add point1.x, ax; Сдвиг точек по x-координате на длину прямоугольника
     add point2.x, ax
     call draw_line_along_y; Отрисовка правого ребра
+    pop point2.y
+    pop point2.x
+    pop point1.y
+    pop point1.x
     pop ax
     ret
 draw_rectangle_hollow endp
 
 ; Аргументы:
 ;   point1: левый верхний угол прямоугольника
-;   rectangle_lenght: длина прямоугольника
+;   rectangle_length: длина прямоугольника
 ;   rectangle_height: высота прямоугольника
 ;   pixel_color: цвет заливки и ребер прямоугольника
 ; Результат:
@@ -182,6 +243,10 @@ draw_rectangle_hollow endp
 ;   cx: итератор цикла отрисовки
 draw_rectangle_filled proc near
     push ax cx
+    push word ptr point1.x
+    push word ptr point1.y
+    push word ptr point2.x
+    push word ptr point2.y
     mov ax, point1.x; Сдвиг x-координаты второй точки на длину прямоугольника
     add ax, rectangle_length
     mov point2.x, ax
@@ -194,6 +259,10 @@ draw_rectangle_filled proc near
         inc point2.y
     loop @draw_rectangle_filled
 
+    pop point2.y
+    pop point2.x
+    pop point1.y
+    pop point1.x
     pop cx ax
     ret
 draw_rectangle_filled endp
@@ -210,6 +279,10 @@ draw_rectangle_filled endp
 ;   cx: итератор цикла отрисовки
 draw_line_along_x proc near
     push si di ax bx cx
+    push word ptr point1.x
+    push word ptr point1.y
+    push word ptr point2.x
+    push word ptr point2.y
     mov ax, point2.x
     mov bx, point1.x
     ; Сравнение относительного положения точек
@@ -237,6 +310,10 @@ draw_line_along_x proc near
         inc si
     loop @draw_line_along_x_loop
 
+    pop point2.y
+    pop point2.x
+    pop point1.y
+    pop point1.x
     pop cx bx ax di si
     ret
 draw_line_along_x endp
@@ -253,6 +330,10 @@ draw_line_along_x endp
 ;   cx: итератор цикла отрисовки
 draw_line_along_y proc near
     push si di ax bx cx
+    push word ptr point1.x
+    push word ptr point1.y
+    push word ptr point2.x
+    push word ptr point2.y
     mov ax, point2.y
     mov bx, point1.y
     ; Сравнение относительного положения точек
@@ -279,6 +360,10 @@ draw_line_along_y proc near
         inc di
     loop @draw_line_along_y_loop_
     
+    pop point2.y
+    pop point2.x
+    pop point1.y
+    pop point1.x
     pop cx bx ax di si
     ret
 draw_line_along_y endp

@@ -9,14 +9,14 @@ DATA_SEG segment
     point ends
    
     pixel_color db 4
-    point1 point <100, 50>
-    point2 point <100, 100>
+    point1 point <0, 0>
+    point2 point <250, 250>
 
     rectangle_height dw 100
     rectangle_length dw 100
 
-    delta_x dw 0
-    delta_y dw 0
+    x_incr dw 0
+    y_incr dw 0
     err dw 0
 DATA_SEG ends
 
@@ -44,8 +44,9 @@ main:
 ;   Нет
 ; Регистры:
 ;   ax, bx: сравнение относительного положения точек для оптимизации
+;   ax, bx, dx: промежуточные вычисления
 draw_line proc near
-    push ax bx
+    push ax bx cx dx di si
     mov ax, point1.x
     mov bx, point2.x
     cmp ax, bx; Если точки лежат на одной x-координате, вызывается специальная процедура 
@@ -55,7 +56,7 @@ draw_line proc near
     mov bx, point2.y
     cmp ax, bx; Если точки лежат на одной y-координате, вызывается специальная процедура 
     je @points_on_the_same_y
-    jmp @draw_line_exit
+    jmp @points_are_scattered
     
     @points_on_the_same_x:
         call draw_line_along_y; x-координата неизменна, так что вызывается процедура отрисовки вдоль y-координаты
@@ -65,8 +66,70 @@ draw_line proc near
         call draw_line_along_x; y-координата неизменна, так что вызывается процедура отрисовки вдоль x-координаты
         jmp @draw_line_exit
 
+    @points_are_scattered:
+        mov si, point2.x
+        mov di, point2.y
+
+        mov ax, point2.x
+        sub ax, point1.x; dx = p2.x - p1.x
+        jns dx_pos; Если dx < 0, x-координата отрисовки отрезка будет уменьшаться
+        neg ax
+        mov word ptr x_incr, 1; Если dx > 0, x-координата отрисовки отрезка будет увеличиваться
+        jmp dx_neg
+        
+        dx_pos:
+            mov word ptr x_incr, -1
+        dx_neg:
+            mov bx, di
+            sub bx, point1.y
+            jns dy_pos
+            neg bx
+            mov word ptr y_incr, 1
+            jmp dy_neg
+        dy_pos:
+            mov word ptr y_incr, -1
+        dy_neg:
+            shl ax, 1
+            shl bx, 1
+            call draw_pixel
+            cmp ax, bx
+            jna dx_less_than_dy
+            mov cx, ax
+            shr cx, 1
+            neg cx
+            add cx, bx
+        draw_line_loop1:
+            cmp di, word ptr point1.x
+            je exit_bres
+            cmp cx, 0
+            jl fractlt0
+            add di, word ptr y_incr
+            sub cx, ax
+        fractlt0:
+            add di, word ptr x_incr
+            add cx, bx
+            call draw_pixel
+            jmp draw_line_loop1
+        dx_less_than_dy:
+            mov cx, bx
+            shr cx, 1
+            neg cx
+            add cx, ax
+        draw_line_loop2:
+            cmp di, word ptr point1.y
+            je exit_bres
+            cmp cx, 0
+            jl fractlt02
+            add si, word ptr x_incr
+            sub cx, bx
+        fractlt02:
+            add di, word ptr y_incr
+            add cx, ax
+            call draw_pixel
+            jmp draw_line_loop2
+        exit_bres:
     @draw_line_exit:
-    pop bx ax
+    pop si di cx dx bx ax
     ret
 draw_line endp
 

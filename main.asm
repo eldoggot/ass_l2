@@ -16,6 +16,7 @@ DATA_SEG segment
     rectangle_length dw 100
 
     color_panel_size dw 20
+    color_panel_max_x dw 0
 
     x_incr dw 0
     y_incr dw 0
@@ -34,6 +35,12 @@ main:
 
     mov word ptr point1.x, 0; Стартовые координаты панели цветов
     mov word ptr point1.y, 0
+    
+    mov ax, color_panel_size
+    mov di, 16
+    mul di
+    mov color_panel_max_x, ax; Конечная x-координата панели цветов = <кол-во цветов> * <размер иконки цвета>
+
     call draw_color_panel
 
     mov word ptr pixel_color, 4
@@ -72,6 +79,26 @@ main:
 mouse_handler:
     push cx dx
     mov ax, 0900h
+
+    cmp cx, color_panel_max_x; Если клик по y-координате вне панели цветов, переход сразу к обработчику кнопок
+    jg @skip_color_choice
+
+    cmp dx, color_panel_size; Если клик по y-координате вне панели цветов, переход сразу к обработчику кнопок
+    jg @skip_color_choice
+
+    ; Если клик произошел внутри панели цветов, формула номера цвета высчитывается по формуле: x / <размер иконки цвета>,
+    ; где / есть целочисленное деление
+    push dx; div использует dx для остатка, при этом в dx содержится y-координата клика, поэтому dx сохраняется на стеке
+    mov ax, cx
+    mov di, color_panel_size
+    xor dx, dx
+    div di
+    mov word ptr pixel_color, 15; Цвета отрисованы в порядке убывания номера, поэтому для получения номера цвета
+    sub pixel_color, al; вычитаем его из 15(т.к. всего цветов 15)
+    pop dx
+    jmp @exit_handler
+
+    @skip_color_choice:
 
     cmp bx, 1; bx = 1 -> нажата левая кнопка
     jz @LMB_click

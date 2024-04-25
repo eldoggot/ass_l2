@@ -32,6 +32,14 @@ main:
     mov ax, 0012h; Установка видеорежима
     int 10h
 
+    mov word ptr point1.x, 0; Стартовые координаты панели цветов
+    mov word ptr point1.y, 0
+    call draw_color_panel
+
+    mov word ptr pixel_color, 4
+    mov word ptr rectangle_length, 150
+    mov word ptr rectangle_height, 75
+
     mov ax, 0; Инициализация мыши
     int 33h
     test ax, ax; Проверка инициализации
@@ -367,6 +375,31 @@ draw_line_along_y proc near
     pop cx bx ax di si
     ret
 draw_line_along_y endp
+
+; Аргументы:
+;   point1: точка начала отрисовки панели цветов, левый верхний угол первого цвета
+;   color_panel_size: размер метки цвета в пикселях
+draw_color_panel proc near
+    push si cx    
+    push word ptr point1.x
+    push word ptr point1.y
+
+    mov cl, 15; Итератор цикла, он же код цвета, см. https://en.wikipedia.org/wiki/BIOS_color_attributes для кодов цветов
+    mov si, color_panel_size; 
+    mov rectangle_height, si
+    mov rectangle_length, si
+    
+    @color_panel_drawing_loop:
+        mov pixel_color, cl
+        call draw_rectangle_filled
+        add point1.x, si
+    loop @color_panel_drawing_loop
+
+    pop point1.y
+    pop point1.x
+    pop cx si
+    ret
+draw_color_panel endp
 
 ; Аргументы:
 ;   si: x-координата рисуемого пикселя

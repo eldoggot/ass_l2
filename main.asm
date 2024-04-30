@@ -230,7 +230,7 @@ draw_line endp
 ; Результат:
 ;   Нет
 draw_rectangle_hollow proc near
-    push ax bx cx dx di si
+    push ax bx cx dx
     mov ax, point1.x
     mov bx, point2.x
     cmp ax, bx; Проверка на то, что x-координата левого угла меньше x-координаты правого угла
@@ -242,11 +242,6 @@ draw_rectangle_hollow proc near
     jle @hollow_exit_coord_confirmation; Если y-координаты адекватны, переход к следующему этапу процедуры
     xchg cx, dx
     @hollow_exit_coord_confirmation:
-    mov di, bx; Расчет длины прямоугольника
-    sub di, ax; Благодаря проверкам координат, гарантировано bx >= ax
-    mov si, dx; Расчет высоты прямоугольника
-    sub si, cx; Благодаря проверка координат, гарантировано dx >= cx
-    ; push ax bx cx dx; Сохранение координат точек 
     ; ax = x левого верхнего угла
     ; bx = x правого нижнего угла
     ; cx = y левого верхнего угла
@@ -273,7 +268,7 @@ draw_rectangle_hollow proc near
     ; dx = x  *левого нижнего* угла
     call draw_line_along_y; Отрисовка правого ребра
 
-    pop si di dx cx bx ax
+    pop dx cx bx ax
     ret
 draw_rectangle_hollow endp
 

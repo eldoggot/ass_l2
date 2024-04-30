@@ -9,8 +9,8 @@ DATA_SEG segment
     point ends
    
     pixel_color db 4
-    point1 point <100, 250>
-    point2 point <300, 150>
+    point1 point <100, 100>
+    point2 point <100, 200>
 
     rectangle_height dw 100
     rectangle_length dw 100
@@ -33,10 +33,10 @@ main:
     mov ax, 0012h; Установка видеорежима
     int 10h
 
-    mov ax, point1.x
-    mov bx, point2.x
-    mov dx, point1.y
-    call draw_line_along_x
+    mov ax, point1.y
+    mov bx, point2.y
+    mov cx, point1.x
+    call draw_line_along_y
 
     ; mov word ptr point1.x, 0; Стартовые координаты панели цветов
     ; mov word ptr point1.y, 0
@@ -333,44 +333,27 @@ draw_line_along_x proc near
 draw_line_along_x endp
 
 ; Аргументы:
-;   point1, point2: точки начала и конца отрезка соответственно
+;   ax: y-коориданата точки начала отрезка
+;   bx: y-координата точки конца отрезка
+;   cx: x-координата отрезка
 ;   pixel_color: цвет отрезка
 ; Результат:
 ;   Нет
-; Регистры:
-;   ax, bx: сравнение относительного положения точек
-;   si: x-коориданта отрисовки отрезка
-;   di: y-координата отрисовки отрезка
-;   cx: итератор цикла отрисовки
 draw_line_along_y proc near
-    push si di ax bx cx
-    mov ax, point2.y
-    mov bx, point1.y
-    ; Сравнение относительного положения точек
+    push ax bx dx
     cmp ax, bx
-    jg @point1_to_point2_; Переход по метке, если y-координата point2 больше y-координаты point1
-    jmp @point2_to_point1_
-    ; Отрисовка отрезка от точки point1 до point2
-    @point1_to_point2_:
-        mov di, point1.y; point1.y - точка начала отрезка
-        mov cx, point2.y
-        sub cx, point1.y; cx - длина отрезка
-        jmp @point_comparison_exit_
-    ; Отрисовка отрезка от точки point2 до point1
-    @point2_to_point1_:
-        mov di, point2.y; point2.y - точка начала отрезка
-        mov cx, point1.y
-        sub cx, point2.y; cx - длина отрезка
-        jmp @point_comparison_exit_
-    @point_comparison_exit_:
-    
-    mov si, point1.x; x-кооридната отрезка статическая, поэтому устанавливается один раз вне цикла
-    @draw_line_along_y_loop_:
+    jle @draw_line_along_y_loop_init; Если ax < bx, переход на метку цикла отрисовки
+    xchg ax, bx; Иначе значения регистров меняются местами
+    @draw_line_along_y_loop_init:
+        mov dx, ax; cx - итератор цикла отрисовки(изменяемая y-координата при отрисовке)
+    @draw_line_along_y_loop:
         call draw_pixel
-        inc di
-    loop @draw_line_along_y_loop_
-    
-    pop cx bx ax di si
+        cmp dx, bx; Проверка на то, что итератор достиг конца цикла(изменяемая y-координата достигла конца отрезка)
+        jz @draw_line_along_y_exit
+        inc dx
+        jmp @draw_line_along_y_loop
+    @draw_line_along_y_exit:
+        pop dx bx ax
     ret
 draw_line_along_y endp
 

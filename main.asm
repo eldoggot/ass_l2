@@ -239,6 +239,7 @@ draw_rectangle_hollow proc near
     @hollow_compare_y:
         mov cx, point1.y
         mov dx, point2.y
+        cmp cx, dx
     jle @hollow_exit_coord_confirmation; Если y-координаты адекватны, переход к следующему этапу процедуры
     xchg cx, dx
     @hollow_exit_coord_confirmation:

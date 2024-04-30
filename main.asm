@@ -314,15 +314,11 @@ draw_rectangle_filled endp
 ;   cx: итератор цикла отрисовки
 draw_line_along_x proc near
     push si di ax bx cx
-    push word ptr point1.x
-    push word ptr point1.y
-    push word ptr point2.x
-    push word ptr point2.y
-    mov ax, point2.x
-    mov bx, point1.x
+    mov ax, point1.x
+    mov bx, point2.x
     ; Сравнение относительного положения точек
     cmp ax, bx
-    jg @point1_to_point2; Переход по метке, если x-координата point2 больше x-координаты point1
+    jl @point1_to_point2; Переход по метке, если x-координата point2 больше x-координаты point1
     jmp @point2_to_point1
     ; Отрисовка отрезка от точки point1 до point2
     @point1_to_point2:
@@ -365,10 +361,6 @@ draw_line_along_x endp
 ;   cx: итератор цикла отрисовки
 draw_line_along_y proc near
     push si di ax bx cx
-    push word ptr point1.x
-    push word ptr point1.y
-    push word ptr point2.x
-    push word ptr point2.y
     mov ax, point2.y
     mov bx, point1.y
     ; Сравнение относительного положения точек
@@ -395,10 +387,6 @@ draw_line_along_y proc near
         inc di
     loop @draw_line_along_y_loop_
     
-    pop point2.y
-    pop point2.x
-    pop point1.y
-    pop point1.x
     pop cx bx ax di si
     ret
 draw_line_along_y endp
@@ -446,35 +434,6 @@ draw_pixel proc near
     ret
 draw_pixel endp
 
-; Аргументы:
-;   ax: число, которое нужно вывести
-; Результат:
-;   Нет
-print_number_to_screen proc near
-    push ax si cx dx 
-    mov si, 10 
-    mov cx, 0    ; CX - счетчик цифр
-    pushing_number_to_stack:
-        mov dx, 0    ; DX - для хранения остатка от деления
-        div si       ; Деление AX на 10, остаток в DX, результат в AX
-        add dx,'0'   ; Преобразование остатка в символ ASCII
-        push dx      ; Сохранение символа в стеке
-        inc cx       ; Увеличение счетчика цифр
-        cmp ax, 0     ; Проверка, закончился ли вывод всех цифр
-        jnz pushing_number_to_stack        ; Если остались ещё цифры, продолжаем цикл
-    printing_numbers_from_stack:
-        pop dx       ; Извлечение цифры из стека
-        mov ah, 02h   ; AH = 02h - функция INT 21h для вывода символа
-        int 21h      ; Вывод цифры
-        loop printing_numbers_from_stack      ; Повторение вывода для остальных цифр
-    
-    mov dx, 10; Вывод \n
-    mov ah, 02h
-    int 21h
-
-    pop dx cx si ax
-    ret
-print_number_to_screen endp
 
 CODE_SEG ends
 end main

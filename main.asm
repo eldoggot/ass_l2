@@ -9,7 +9,7 @@ DATA_SEG segment
     point ends
    
     pixel_color db 4
-    point1 point <100, 100>
+    point1 point <200, 300>
     point2 point <100, 200>
 
     rectangle_height dw 100
@@ -33,10 +33,7 @@ main:
     mov ax, 0012h; Установка видеорежима
     int 10h
 
-    mov ax, point1.y
-    mov bx, point2.y
-    mov cx, point1.x
-    call draw_line_along_y
+    call draw_rectangle_hollow
 
     ; mov word ptr point1.x, 0; Стартовые координаты панели цветов
     ; mov word ptr point1.y, 0
@@ -227,47 +224,56 @@ draw_line proc near
 draw_line endp
 
 ; Аргументы:
-;   point1: левый верхний угол прямоугольника
-;   rectangle_length: длина прямоугольника
-;   rectangle_height: высота прямоугольника
-;   pixel_color: цвет ребер прямоугольника
+;   point1: точка левого верхнего угла прямоугольника
+;   point2: точка нижнего правого угла прямоугольника
+;   pixel_color: цвет прямоугольника
 ; Результат:
 ;   Нет
-; Регистры:
-;   ax: промежуточные вычисления координат
 draw_rectangle_hollow proc near
-    push ax
-    push word ptr point1.x
-    push word ptr point1.y
-    push word ptr point2.x
-    push word ptr point2.y
-    mov ax, point1.x; Сдвиг x-координаты второй точки на длину прямоугольника
-    add ax, rectangle_length
-    mov point2.x, ax 
-    mov ax, point1.y; Обе точки лежат на одной y-координате
-    mov point2.y, ax
+    push ax bx cx dx di si
+    mov ax, point1.x
+    mov bx, point2.x
+    cmp ax, bx; Проверка на то, что x-координата левого угла меньше x-координаты правого угла
+    jle @hollow_compare_y; Если это так, аналогично проверяется y-координаты
+    xchg ax, bx; Иначе значения регистров меняются местами
+    @hollow_compare_y:
+        mov cx, point1.y
+        mov dx, point2.y
+    jle @hollow_exit_coord_confirmation; Если y-координаты адекватны, переход к следующему этапу процедуры
+    xchg cx, dx
+    @hollow_exit_coord_confirmation:
+    mov di, bx; Расчет длины прямоугольника
+    sub di, ax; Благодаря проверкам координат, гарантировано bx >= ax
+    mov si, dx; Расчет высоты прямоугольника
+    sub si, cx; Благодаря проверка координат, гарантировано dx >= cx
+    ; push ax bx cx dx; Сохранение координат точек 
+    ; ax = x левого верхнего угла
+    ; bx = x правого нижнего угла
+    ; cx = y левого верхнего угла
+    ; dx = y правого нижнего угла
     call draw_line_along_x; Отрисовка верхнего ребра
-    
-    mov ax, rectangle_height
-    add point1.y, ax; Сдвиг точек по y-координате на высоту прямоугольника
-    add point2.y, ax
+    xchg cx, dx; draw_line_along_x принимает cx в качестве параметра для y-координаты отерзка
+               ; ** - измененные аттрибуты
+    ; ax = x левого верхнего угла
+    ; bx = x правого нижнего угла
+    ; cx = y *левого нижнего* угла
+    ; dx = y *правого верхнего* угла
     call draw_line_along_x; Отрисовка нижнего ребра
-
-    mov ax, rectangle_height
-    sub point1.y, ax; Возврат в левый верхний угол, т.к. процедура отрисовки может рисовать только снизу вверх
-    mov ax, point1.x; Обе точки лежат на одной x-координате
-    mov point2.x, ax
+    xchg ax, cx
+    xchg bx, dx
+    ; ax = *y* левого верхнего угла
+    ; bx = *y* правого нижнего угла
+    ; cx = *x* левого нижнего угла
+    ; dx = *x* правого верхнего угла
     call draw_line_along_y; Отрисовка левого ребра
-    
-    mov ax, rectangle_length
-    add point1.x, ax; Сдвиг точек по x-координате на длину прямоугольника
-    add point2.x, ax
+    xchg cx, dx
+    ; ax = y левого верхнего угла
+    ; bx = y правого нижнего угла
+    ; cx = *правого верхнего* угла
+    ; dx = x  *левого нижнего* угла
     call draw_line_along_y; Отрисовка правого ребра
-    pop point2.y
-    pop point2.x
-    pop point1.y
-    pop point1.x
-    pop ax
+
+    pop si di dx cx bx ax
     ret
 draw_rectangle_hollow endp
 

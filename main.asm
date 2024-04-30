@@ -9,8 +9,8 @@ DATA_SEG segment
     point ends
    
     pixel_color db 4
-    point1 point <0, 0>
-    point2 point <250, 250>
+    point1 point <100, 250>
+    point2 point <300, 150>
 
     rectangle_height dw 100
     rectangle_length dw 100
@@ -33,42 +33,47 @@ main:
     mov ax, 0012h; Установка видеорежима
     int 10h
 
-    mov word ptr point1.x, 0; Стартовые координаты панели цветов
-    mov word ptr point1.y, 0
+    mov ax, point1.x
+    mov bx, point2.x
+    mov dx, point1.y
+    call draw_line_along_x
+
+    ; mov word ptr point1.x, 0; Стартовые координаты панели цветов
+    ; mov word ptr point1.y, 0
     
-    mov ax, color_panel_size
-    mov di, 16
-    mul di
-    mov color_panel_max_x, ax; Конечная x-координата панели цветов = <кол-во цветов> * <размер иконки цвета>
+    ; mov ax, color_panel_size
+    ; mov di, 16
+    ; mul di
+    ; mov color_panel_max_x, ax; Конечная x-координата панели цветов = <кол-во цветов> * <размер иконки цвета>
 
-    call draw_color_panel
+    ; call draw_color_panel
 
-    mov word ptr pixel_color, 4
-    mov word ptr rectangle_length, 150
-    mov word ptr rectangle_height, 75
+    ; mov word ptr pixel_color, 4
+    ; mov word ptr rectangle_length, 150
+    ; mov word ptr rectangle_height, 75
 
-    mov ax, 0; Инициализация мыши
-    int 33h
-    test ax, ax; Проверка инициализации
-    jz program_end; Если мышь не инициализирована, программа завершается
+    ; mov ax, 0; Инициализация мыши
+    ; int 33h
+    ; test ax, ax; Проверка инициализации
+    ; jz program_end; Если мышь не инициализирована, программа завершается
 
-    mov ax, 0Ch; Установка обработчика событий иыши
-    push cs
-    pop es
+    ; mov ax, 0Ch; Установка обработчика событий иыши
+    ; push cs
+    ; pop es
 
-    mov cx, 001010b; Установка кнопок мыши
-    mov dx, offset mouse_handler; Адрес обработчика мыши
-    int 33h
+    ; mov cx, 001010b; Установка кнопок мыши
+    ; mov dx, offset mouse_handler; Адрес обработчика мыши
+    ; int 33h
 
-    mov ax, 1; Показать курсор мыши
-    int 33h
+    ; mov ax, 1; Показать курсор мыши
+    ; int 33h
 
-    mov ah,0; Ожидание нажатия клавиши
-    int 16h
+    ; mov ah,0; Ожидание нажатия клавиши
+    ; int 16h
 
-    mov ax, 0Ch; Удаление обработчика мыши
-    mov cx, 0 
-    int 33h
+    ; mov ax, 0Ch; Удаление обработчика мыши
+    ; mov cx, 0 
+    ; int 33h
 
     program_end:
 
@@ -303,49 +308,27 @@ draw_rectangle_filled proc near
 draw_rectangle_filled endp
 
 ; Аргументы:
-;   point1, point2: точки начала и конца отрезка соответственно
+;   ax: x-коориданата точки начала отрезка
+;   bx: x-координата точки конца отрезка
+;   dx: y-координата отрезка
 ;   pixel_color: цвет отрезка
 ; Результат:
 ;   Нет
-; Регистры:
-;   ax, bx: сравнение относительного положения точек
-;   si: x-координата отрисовки отрезка
-;   di: y-координата отрисовки отерзка
-;   cx: итератор цикла отрисовки
 draw_line_along_x proc near
-    push si di ax bx cx
-    mov ax, point1.x
-    mov bx, point2.x
-    ; Сравнение относительного положения точек
+    push ax bx cx
     cmp ax, bx
-    jl @point1_to_point2; Переход по метке, если x-координата point2 больше x-координаты point1
-    jmp @point2_to_point1
-    ; Отрисовка отрезка от точки point1 до point2
-    @point1_to_point2:
-        mov si, point1.x; point1.x - точка начала отрезка
-        mov cx, point2.x
-        sub cx, point1.x; cx - длина отрезка
-        jmp @point_comparison_exit
-    ; Отрисовка отрезка от точки point2 до point1
-    @point2_to_point1:
-        mov si, point2.x; point2.x - точка начала отрезка
-        mov cx, point1.x
-        sub cx, point2.x; cx - длина отрезка
-        jmp @point_comparison_exit
-    @point_comparison_exit:
-    
-    mov di, point1.y; y-кооридната отрезка статическая, поэтому устанавливается один раз вне цикла
-    
+    jle @draw_line_along_x_loop_init; Если ax < bx, переход на метку цикла отрисовки
+    xchg ax, bx; Иначе значения регистров меняются местами
+    @draw_line_along_x_loop_init:
+        mov cx, ax; cx - итератор цикла отрисовки(изменяемая x-координата при отрисовке)
     @draw_line_along_x_loop:
         call draw_pixel
-        inc si
-    loop @draw_line_along_x_loop
-
-    pop point2.y
-    pop point2.x
-    pop point1.y
-    pop point1.x
-    pop cx bx ax di si
+        cmp cx, bx; Проверка на то, что итератор достиг конца цикла(изменяемая x-координата достигла конца отрезка)
+        jz @draw_line_along_x_exit
+        inc cx
+        jmp @draw_line_along_x_loop
+    @draw_line_along_x_exit:
+        pop cx bx ax
     ret
 draw_line_along_x endp
 
@@ -417,20 +400,18 @@ draw_color_panel proc near
 draw_color_panel endp
 
 ; Аргументы:
-;   si: x-координата рисуемого пикселя
-;   di: y-координата рисуемого пикселя
+;   cx: x-координата рисуемого пикселя
+;   dx: y-координата рисуемого пикселя
 ;   pixel_color: цвет пикселя
 ; Результат:
 ;   Нет
 draw_pixel proc near
-    push ax bx cx dx
+    push ax bx
     mov ah, 0Ch
     mov al, pixel_color; al = цвет пикселя
     mov bh, 0; bh = номер видеостраницы
-    mov cx, si; cx = x-координата пикслея
-    mov dx, di; dx = y-координата пикселя
     int 10h
-    pop dx cx bx ax
+    pop bx ax
     ret
 draw_pixel endp
 

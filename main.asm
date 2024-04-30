@@ -9,8 +9,8 @@ DATA_SEG segment
     point ends
    
     pixel_color db 4
-    point1 point <200, 300>
-    point2 point <100, 200>
+    point1 point <300, 200>
+    point2 point <200, 100>
 
     rectangle_height dw 100
     rectangle_length dw 100
@@ -33,7 +33,7 @@ main:
     mov ax, 0012h; Установка видеорежима
     int 10h
 
-    call draw_rectangle_hollow
+    call draw_rectangle_filled
 
     ; mov word ptr point1.x, 0; Стартовые координаты панели цветов
     ; mov word ptr point1.y, 0
@@ -274,37 +274,37 @@ draw_rectangle_hollow endp
 
 ; Аргументы:
 ;   point1: левый верхний угол прямоугольника
-;   rectangle_length: длина прямоугольника
-;   rectangle_height: высота прямоугольника
+;   point2: правый нижний угол прямоугольника
 ;   pixel_color: цвет заливки и ребер прямоугольника
 ; Результат:
 ;   Нет
-; Регистры:
-;   ax: промежуточные вычисления координат
-;   cx: итератор цикла отрисовки
 draw_rectangle_filled proc near
-    push ax cx
-    push word ptr point1.x
-    push word ptr point1.y
-    push word ptr point2.x
-    push word ptr point2.y
-    mov ax, point1.x; Сдвиг x-координаты второй точки на длину прямоугольника
-    add ax, rectangle_length
-    mov point2.x, ax
-    mov ax, point1.y; Обе точки лежат на одной y-координате
-    mov point2.y, ax
-    mov cx, rectangle_height; Количетсво итераций отрисовки линий равно высоте прямоугольника
-    @draw_rectangle_filled:
+    push ax bx cx dx di
+    mov ax, point1.x
+    mov bx, point2.x
+    cmp ax, bx; Проверка на то, что x-координата левого угла меньше x-координаты правого угла
+    jle @filled_compare_y; Если это так, аналогично проверяется y-координаты
+    xchg ax, bx; Иначе значения регистров меняются местами
+    @filled_compare_y:
+        mov cx, point1.y
+        mov dx, point2.y
+        cmp cx, dx
+    jge @filled_exit_coord_confirmation; Если y-координаты адекватны, переход к следующему этапу процедуры
+    xchg cx, dx
+    @filled_exit_coord_confirmation:
+    ; ax = x левого верхнего угла
+    ; bx = x правого нижнего угла
+    ; cx = y правого нижнего угла
+    ; dx = y левого верхнего угла
+    mov di, cx; В результате проверок, гарантировано cx >= dx
+    sub di, dx; si = высота прямоугольника
+    mov cx, di; Итератор aka высота прямоугольника
+    @filled_rectangle_drawing_loop:
         call draw_line_along_x
-        inc point1.y; Сдвигаем y-координаты обеих точек на 1 вниз
-        inc point2.y
-    loop @draw_rectangle_filled
+        inc dx
+    loop @filled_rectangle_drawing_loop
 
-    pop point2.y
-    pop point2.x
-    pop point1.y
-    pop point1.x
-    pop cx ax
+    pop di dx cx bx ax
     ret
 draw_rectangle_filled endp
 

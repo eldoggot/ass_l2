@@ -9,11 +9,8 @@ DATA_SEG segment
     point ends
    
     pixel_color db 4
-    point1 point <300, 200>
-    point2 point <200, 100>
-
-    rectangle_height dw 100
-    rectangle_length dw 100
+    point1 point <0, 0>
+    point2 point <0, 0>
 
     color_panel_size dw 20
     color_panel_max_x dw 0
@@ -37,19 +34,15 @@ main:
     mov ax, 0012h; Установка видеорежима
     int 10h
 
-    ; mov word ptr point1.x, 0; Стартовые координаты панели цветов
-    ; mov word ptr point1.y, 0
+    mov word ptr point1.x, 0; Стартовые координаты панели цветов
+    mov word ptr point1.y, 0
     
-    ; mov ax, color_panel_size
-    ; mov di, 16
-    ; mul di
-    ; mov color_panel_max_x, ax; Конечная x-координата панели цветов = <кол-во цветов> * <размер иконки цвета>
+    mov ax, color_panel_size
+    mov di, 16
+    mul di
+    mov color_panel_max_x, ax; Конечная x-координата панели цветов = <кол-во цветов> * <размер иконки цвета>
 
-    ; call draw_color_panel
-
-    ; mov word ptr pixel_color, 4
-    ; mov word ptr rectangle_length, 150
-    ; mov word ptr rectangle_height, 75
+    call draw_color_panel
 
     mov ax, 0; Инициализация мыши
     int 33h
@@ -391,18 +384,29 @@ draw_color_panel proc near
     push si cx    
     push word ptr point1.x
     push word ptr point1.y
+    push word ptr point2.x
+    push word ptr point2.y
 
     mov cl, 15; Итератор цикла, он же код цвета, см. https://en.wikipedia.org/wiki/BIOS_color_attributes для кодов цветов
     mov si, color_panel_size; 
-    mov rectangle_height, si
-    mov rectangle_length, si
+
+    mov ax, point1.x
+    add ax, si
+    mov point2.x, ax
+
+    mov ax, point1.y
+    add ax, si
+    mov point2.y, ax
     
     @color_panel_drawing_loop:
         mov pixel_color, cl
         call draw_rectangle_filled
-        add point1.x, si
+        add point1.x, si; Сдвиг x-координат иконки следующего цвета на размер цвета
+        add point2.x, si
     loop @color_panel_drawing_loop
 
+    pop point2.y
+    pop point2.x
     pop point1.y
     pop point1.x
     pop cx si

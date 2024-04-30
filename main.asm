@@ -21,6 +21,10 @@ DATA_SEG segment
     x_incr dw 0
     y_incr dw 0
     err dw 0
+
+    is_drawing_hollow dw 0
+    is_drawing_filled dw 0
+    is_drawing_line dw 0
 DATA_SEG ends
 
 CODE_SEG segment
@@ -32,8 +36,6 @@ main:
 
     mov ax, 0012h; Установка видеорежима
     int 10h
-
-    call draw_rectangle_filled
 
     ; mov word ptr point1.x, 0; Стартовые координаты панели цветов
     ; mov word ptr point1.y, 0
@@ -49,28 +51,28 @@ main:
     ; mov word ptr rectangle_length, 150
     ; mov word ptr rectangle_height, 75
 
-    ; mov ax, 0; Инициализация мыши
-    ; int 33h
-    ; test ax, ax; Проверка инициализации
-    ; jz program_end; Если мышь не инициализирована, программа завершается
+    mov ax, 0; Инициализация мыши
+    int 33h
+    test ax, ax; Проверка инициализации
+    jz program_end; Если мышь не инициализирована, программа завершается
 
-    ; mov ax, 0Ch; Установка обработчика событий иыши
-    ; push cs
-    ; pop es
+    mov ax, 0Ch; Установка обработчика событий иыши
+    push cs
+    pop es
 
-    ; mov cx, 001010b; Установка кнопок мыши
-    ; mov dx, offset mouse_handler; Адрес обработчика мыши
-    ; int 33h
+    mov cx, 001010b; Установка кнопок мыши
+    mov dx, offset mouse_handler; Адрес обработчика мыши
+    int 33h
 
-    ; mov ax, 1; Показать курсор мыши
-    ; int 33h
+    mov ax, 1; Показать курсор мыши
+    int 33h
 
-    ; mov ah,0; Ожидание нажатия клавиши
-    ; int 16h
+    mov ah,0; Ожидание нажатия клавиши
+    int 16h
 
-    ; mov ax, 0Ch; Удаление обработчика мыши
-    ; mov cx, 0 
-    ; int 33h
+    mov ax, 0Ch; Удаление обработчика мыши
+    mov cx, 0 
+    int 33h
 
     program_end:
 
@@ -79,7 +81,7 @@ main:
     int 21h
 
 mouse_handler:
-    push cx dx
+    push ax bx cx dx di
     mov ax, 0900h
 
     cmp cx, color_panel_max_x; Если клик по y-координате вне панели цветов, переход сразу к обработчику кнопок
@@ -101,29 +103,52 @@ mouse_handler:
     jmp @exit_handler
 
     @skip_color_choice:
-
-    cmp bx, 1; bx = 1 -> нажата левая кнопка
-    jz @LMB_click
-    
-    cmp bx, 2; bx = 3 -> нажата правая кнопка
-    jz @RMB_click
-
-    jmp @exit_handler
+        cmp bx, 1; bx = 1 -> нажата левая кнопка
+        jz @LMB_click
+        cmp bx, 2; bx = 3 -> нажата правая кнопка
+        jz @RMB_click
+        jmp @exit_handler; Не найдено соответствий -> выход из процедуры
 
     @LMB_click:
-        mov point1.x, cx
-        mov point1.y, dx
-        call draw_rectangle_hollow
-        jmp @exit_handler
+        mov bx, is_drawing_hollow
+        cmp bx, 0
+        jz @LMB_first_click
+        jmp @LMB_second_click
+        @LMB_first_click:
+            mov point1.x, cx
+            mov point1.y, dx
+            mov word ptr is_drawing_hollow, 1
+            mov word ptr is_drawing_filled, 0
+            mov word ptr is_drawing_line, 0
+            jmp @exit_handler
+        @LMB_second_click:
+            mov point2.x, cx
+            mov point2.y, dx
+            call draw_rectangle_hollow
+            mov word ptr is_drawing_hollow, 0
+            jmp @exit_handler
 
-    @RMB_click:
-        mov point1.x, cx
-        mov point1.y, dx
-        call draw_rectangle_filled
-        jmp @exit_handler
-    
+     @RMB_click:
+        mov bx, is_drawing_filled
+        cmp bx, 0
+        jz @RMB_first_click
+        jmp @RMB_second_click
+        @RMB_first_click:
+            mov point1.x, cx
+            mov point1.y, dx
+            mov word ptr is_drawing_hollow, 0
+            mov word ptr is_drawing_filled, 1
+            mov word ptr is_drawing_line, 0
+            jmp @exit_handler
+        @RMB_second_click:
+            mov point2.x, cx
+            mov point2.y, dx
+            call draw_rectangle_filled
+            mov word ptr is_drawing_filled, 0
+            jmp @exit_handler
+
     @exit_handler:
-        pop dx cx
+        pop di dx cx bx ax
         retf
 
 ; Аргументы:

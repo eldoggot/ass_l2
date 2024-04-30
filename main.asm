@@ -2,6 +2,10 @@ STACK_SEG segment stack
     db 256 dup(0)
 STACK_SEG ends
 
+HISTORY_SEG segment stack
+    db 256 dup(0)
+HISTORY_SEG ends
+
 DATA_SEG segment
     point struc
         x dw 0
@@ -34,16 +38,6 @@ main:
     mov ax, 0012h; Установка видеорежима
     int 10h
 
-    mov word ptr point1.x, 0; Стартовые координаты панели цветов
-    mov word ptr point1.y, 0
-    
-    mov ax, color_panel_size
-    mov di, 16
-    mul di
-    mov color_panel_max_x, ax; Конечная x-координата панели цветов = <кол-во цветов> * <размер иконки цвета>
-
-    call draw_color_panel
-
     mov ax, 0; Инициализация мыши
     int 33h
     test ax, ax; Проверка инициализации
@@ -56,6 +50,8 @@ main:
     mov cx, 101010b; Установка кнопок мыши
     mov dx, offset mouse_handler; Адрес обработчика мыши
     int 33h
+
+    call draw_interface
 
     mov ax, 1; Показать курсор мыши
     int 33h
@@ -429,6 +425,23 @@ draw_pixel proc near
     ret
 draw_pixel endp
 
+draw_interface proc near
+    push ax
+    mov ah, 0
+    int 10h
+        
+    mov word ptr point1.x, 0; Стартовые координаты панели цветов
+    mov word ptr point1.y, 0
+    
+    mov ax, color_panel_size
+    mov di, 16
+    mul di
+    mov color_panel_max_x, ax; Конечная x-координата панели цветов = <кол-во цветов> * <размер иконки цвета>
+
+    call draw_color_panel
+    pop ax
+    ret
+draw_interface endp
 
 CODE_SEG ends
 end main

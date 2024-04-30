@@ -60,7 +60,7 @@ main:
     push cs
     pop es
 
-    mov cx, 001010b; Установка кнопок мыши
+    mov cx, 101010b; Установка кнопок мыши
     mov dx, offset mouse_handler; Адрес обработчика мыши
     int 33h
 
@@ -107,6 +107,9 @@ mouse_handler:
         jz @LMB_click
         cmp bx, 2; bx = 3 -> нажата правая кнопка
         jz @RMB_click
+        cmp bx, 4; bx = 4 -> нажата средняя кнопка
+        jz @MMB_click
+        
         jmp @exit_handler; Не найдено соответствий -> выход из процедуры
 
     @LMB_click:
@@ -128,7 +131,7 @@ mouse_handler:
             mov word ptr is_drawing_hollow, 0
             jmp @exit_handler
 
-     @RMB_click:
+    @RMB_click:
         mov bx, is_drawing_filled
         cmp bx, 0
         jz @RMB_first_click
@@ -147,6 +150,25 @@ mouse_handler:
             mov word ptr is_drawing_filled, 0
             jmp @exit_handler
 
+    @MMB_click:
+        mov bx, is_drawing_line
+        cmp bx, 0
+        jz @MMB_first_click
+        jmp @MMB_second_click
+        @MMB_first_click:
+            mov point1.x, cx
+            mov point1.y, dx
+            mov word ptr is_drawing_hollow, 0
+            mov word ptr is_drawing_filled, 0
+            mov word ptr is_drawing_line, 1
+            jmp @exit_handler
+        @MMB_second_click:
+            mov point2.x, cx
+            mov point2.y, dx
+            call draw_line
+            mov word ptr is_drawing_line, 0
+            jmp @exit_handler
+
     @exit_handler:
         pop di dx cx bx ax
         retf
@@ -162,89 +184,67 @@ mouse_handler:
 ;   ax, bx, dx: промежуточные вычисления
 draw_line proc near
     push ax bx cx dx di si
-    mov ax, point1.x
-    mov bx, point2.x
-    cmp ax, bx; Если точки лежат на одной x-координате, вызывается специальная процедура 
-    je @points_on_the_same_x
-    
-    mov ax, point1.y
-    mov bx, point2.y
-    cmp ax, bx; Если точки лежат на одной y-координате, вызывается специальная процедура 
-    je @points_on_the_same_y
-    jmp @points_are_scattered
-    
-    @points_on_the_same_x:
-        call draw_line_along_y; x-координата неизменна, так что вызывается процедура отрисовки вдоль y-координаты
-        jmp @draw_line_exit
+    mov cx, point2.x
+    mov dx, point2.y
 
-    @points_on_the_same_y:
-        call draw_line_along_x; y-координата неизменна, так что вызывается процедура отрисовки вдоль x-координаты
-        jmp @draw_line_exit
-
-    @points_are_scattered:
-        mov si, point2.x
-        mov di, point2.y
-
-        mov ax, point2.x
-        sub ax, point1.x; dx = p2.x - p1.x
-        jns dx_pos; Если dx < 0, x-координата отрисовки отрезка будет уменьшаться
-        neg ax
-        mov word ptr x_incr, 1; Если dx > 0, x-координата отрисовки отрезка будет увеличиваться
-        jmp dx_neg
-        
-        dx_pos:
-            mov word ptr x_incr, -1
-        dx_neg:
-            mov bx, di
-            sub bx, point1.y
-            jns dy_pos
-            neg bx
-            mov word ptr y_incr, 1
-            jmp dy_neg
-        dy_pos:
-            mov word ptr y_incr, -1
-        dy_neg:
-            shl ax, 1
-            shl bx, 1
-            ; call draw_pixel
-            cmp ax, bx
-            jna dx_less_than_dy
-            mov cx, ax
-            shr cx, 1
-            neg cx
-            add cx, bx
-        draw_line_loop1:
-            cmp di, word ptr point1.x
-            je exit_bres
-            cmp cx, 0
-            jl fractlt0
-            add di, word ptr y_incr
-            sub cx, ax
-        fractlt0:
-            add di, word ptr x_incr
-            add cx, bx
-            call draw_pixel
-            jmp draw_line_loop1
-        dx_less_than_dy:
-            mov cx, bx
-            shr cx, 1
-            neg cx
-            add cx, ax
-        draw_line_loop2:
-            cmp di, word ptr point1.y
-            je exit_bres
-            cmp cx, 0
-            jl fractlt02
-            add si, word ptr x_incr
-            sub cx, bx
-        fractlt02:
-            add di, word ptr y_incr
-            add cx, ax
-            call draw_pixel
-            jmp draw_line_loop2
-        exit_bres:
-    @draw_line_exit:
-    pop si di cx dx bx ax
+    mov ax, cx
+    sub ax, point1.x; dx = p2.x - p1.x
+    jns dx_pos; Если dx < 0, x-координата отрисовки отрезка будет уменьшаться
+    neg ax
+    mov word ptr x_incr, 1; Если dx > 0, x-координата отрисовки отрезка будет увеличиваться
+    jmp dx_neg
+    dx_pos:
+        mov word ptr x_incr, -1
+    dx_neg:
+        mov bx, dx
+        sub bx, point1.y
+        jns dy_pos
+        neg bx
+        mov word ptr y_incr, 1
+        jmp dy_neg
+    dy_pos:
+        mov word ptr y_incr, -1
+    dy_neg:
+        shl ax, 1
+        shl bx, 1
+        call draw_pixel
+        cmp ax, bx
+        jna dx_less_than_dy
+        mov di, ax
+        shr di, 1
+        neg di
+        add di, bx
+    draw_line_loop1:
+        cmp cx, word ptr point1.x
+        je exit_bres
+        cmp di, 0
+        jl fractlt0
+        add dx, word ptr y_incr
+        sub di, ax
+    fractlt0:
+        add cx, word ptr x_incr
+        add di, bx
+        call draw_pixel
+        jmp draw_line_loop1
+    dx_less_than_dy:
+        mov di, bx
+        shr di, 1
+        neg di
+        add di, ax
+    draw_line_loop2:
+        cmp dx, word ptr point1.y
+        je exit_bres
+        cmp di, 0
+        jl fractlt02
+        add cx, word ptr x_incr
+        sub di, bx
+    fractlt02:
+        add dx, word ptr y_incr
+        add di, ax
+        call draw_pixel
+        jmp draw_line_loop2
+    exit_bres:
+        pop si di cx dx bx ax
     ret
 draw_line endp
 

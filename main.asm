@@ -281,7 +281,7 @@ draw_rectangle_hollow proc near
     xchg cx, dx
     ; ax = y левого верхнего угла
     ; bx = y правого нижнего угла
-    ; cx = *правого верхнего* угла
+    ; cx = x *правого верхнего* угла
     ; dx = x  *левого нижнего* угла
     call draw_line_along_y; Отрисовка правого ребра
 

@@ -26,6 +26,8 @@ DATA_SEG segment
     is_drawing_hollow dw 0
     is_drawing_filled dw 0
     is_drawing_line dw 0
+
+    thickness dw 5
 DATA_SEG ends
 
 CODE_SEG segment
@@ -116,7 +118,7 @@ mouse_handler:
         @LMB_second_click:
             mov point2.x, cx
             mov point2.y, dx
-            call draw_rectangle_hollow
+            call draw_rectangle_hollow_thick
             mov word ptr is_drawing_hollow, 0
             jmp @exit_handler
 
@@ -286,6 +288,24 @@ draw_rectangle_hollow proc near
     pop dx cx bx ax
     ret
 draw_rectangle_hollow endp
+
+draw_rectangle_hollow_thick proc near
+    mov di, thickness
+    @hollow_thick_drawing_loop:
+        call draw_rectangle_hollow
+        cmp di, 1
+        jg @thickness_above_1
+        jmp @hollow_thick_drawing_loop_exit
+        @thickness_above_1:
+            inc point1.x
+            inc point1.y
+            inc point2.x
+            inc point2.y
+            dec di
+            jmp @hollow_thick_drawing_loop
+    @hollow_thick_drawing_loop_exit:
+    ret
+draw_rectangle_hollow_thick endp
 
 ; Аргументы:
 ;   point1: левый верхний угол прямоугольника

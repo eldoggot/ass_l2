@@ -156,7 +156,7 @@ mouse_handler:
         @MMB_second_click:
             mov point2.x, cx
             mov point2.y, dx
-            call draw_line
+            call draw_line_thick
             mov word ptr is_drawing_line, 0
             jmp @exit_handler
 
@@ -289,14 +289,53 @@ draw_rectangle_hollow proc near
     ret
 draw_rectangle_hollow endp
 
+; Аргументы:
+;   point1: левый верхний угол прямоугольника
+;   point2: правый нижний угол прямоугольника
+;   pixel_color: цвет заливки и ребер прямоугольника
+;   thickness: толщина линии
+; Результат:
+;   Нет
+draw_line_thick proc near
+    ; Эффект толщины линии создается за счет дорисовки линий, прилегающих к исходной
+    ; За каждую единицу толщины отрисовывается одна линия
+    push di
+    mov di, thickness
+    @line_thick_drawing_loop:
+        call draw_line
+        cmp di, 1; Если заданная толщина больше 1 пикселя
+        jg @line_thickness_above_1; сдвигаем координаты новой линии на 1
+        jmp @line_thick_drawing_loop_exit; иначе выходим из цикла отрисовки
+        @line_thickness_above_1:
+            inc point1.x
+            inc point1.y
+            inc point2.x
+            inc point2.y
+            dec di
+            jmp @line_thick_drawing_loop
+    @line_thick_drawing_loop_exit:
+    pop di
+    ret
+draw_line_thick endp
+
+; Аргументы:
+;   point1: левый верхний угол прямоугольника
+;   point2: правый нижний угол прямоугольника
+;   pixel_color: цвет заливки и ребер прямоугольника
+;   thickness: толщина ребер прямоугольника
+; Результат:
+;   Нет
 draw_rectangle_hollow_thick proc near
+    ; Эффект толщины прямоугольника создается за счет дорисовки прямоугольников, прилегающих к исходному
+    ; За каждую единицу толщины отрисовывается одна линия
+    push di
     mov di, thickness
     @hollow_thick_drawing_loop:
         call draw_rectangle_hollow
-        cmp di, 1
-        jg @thickness_above_1
-        jmp @hollow_thick_drawing_loop_exit
-        @thickness_above_1:
+        cmp di, 1; Если заданная толщина больше 1 пикселя
+        jg @hollow_thickness_above_1; сдвигаем координаты нового прямоугольника на 1
+        jmp @hollow_thick_drawing_loop_exit; иначе выходим из цикла отрисовки
+        @hollow_thickness_above_1:
             inc point1.x
             inc point1.y
             inc point2.x
@@ -304,6 +343,7 @@ draw_rectangle_hollow_thick proc near
             dec di
             jmp @hollow_thick_drawing_loop
     @hollow_thick_drawing_loop_exit:
+    pop di
     ret
 draw_rectangle_hollow_thick endp
 

@@ -12,7 +12,7 @@ DATA_SEG segment
         y dw 0
     point ends
    
-    pixel_color db 4
+    pixel_color db 0
     point1 point <0, 0>
     point2 point <0, 0>
 
@@ -27,7 +27,8 @@ DATA_SEG segment
     is_drawing_filled dw 0
     is_drawing_line dw 0
 
-    thickness dw 5
+    thickness dw 1
+    change_thickness_button_size dw 20
 DATA_SEG ends
 
 CODE_SEG segment
@@ -53,7 +54,35 @@ main:
     mov dx, offset mouse_handler; Адрес обработчика мыши
     int 33h
 
-    call draw_interface
+    mov ah, 0; Очистка экрана
+    int 10h
+        
+    mov word ptr point1.x, 0; Стартовые координаты панели цветов
+    mov word ptr point1.y, 0
+    
+    mov ax, color_panel_size
+    mov di, 16
+    mul di
+    mov color_panel_max_x, ax; Конечная x-координата панели цветов = <кол-во цветов> * <размер иконки цвета>
+    call draw_color_panel
+
+    mov point1.x, 0
+    mov ax, color_panel_size
+    mov point1.y, ax
+    mov point2.x, ax
+    add ax, change_thickness_button_size
+    mov point2.y, ax
+    mov al, 2
+    mov pixel_color, al
+    call draw_rectangle_filled
+
+    mov ax, change_thickness_button_size
+    mov point1.x, ax
+    shl ax, 1
+    mov point2.x, ax
+    mov al, 4
+    mov pixel_color, al
+    call draw_rectangle_filled
 
     mov ax, 1; Показать курсор мыши
     int 33h
@@ -94,9 +123,34 @@ mouse_handler:
     jmp @exit_handler
 
     @skip_color_choice:
+        cmp cx, change_thickness_button_size
+        jg @skip_thickness_increase
+        
+        mov ax, color_panel_size
+        add ax, change_thickness_button_size
+        cmp dx, ax
+        jg @skip_thickness_increase
+
+        inc thickness
+        jmp @exit_handler
+
+    @skip_thickness_increase:
+        mov ax, change_thickness_button_size
+        shl ax, 1
+        cmp cx, ax
+        jg @skip_thickness_decrease
+
+        mov ax, thickness
+        cmp ax, 1
+        jle @skip_thickness_increase_exit
+        dec thickness
+        @skip_thickness_increase_exit:
+            jmp @exit_handler
+
+    @skip_thickness_decrease:
         cmp bx, 1; bx = 1 -> нажата левая кнопка
         jz @LMB_click
-        cmp bx, 2; bx = 3 -> нажата правая кнопка
+        cmp bx, 2; bx = 2 -> нажата правая кнопка
         jz @RMB_click
         cmp bx, 4; bx = 4 -> нажата средняя кнопка
         jz @MMB_click
@@ -484,24 +538,5 @@ draw_pixel proc near
     pop bx ax
     ret
 draw_pixel endp
-
-draw_interface proc near
-    push ax
-    mov ah, 0
-    int 10h
-        
-    mov word ptr point1.x, 0; Стартовые координаты панели цветов
-    mov word ptr point1.y, 0
-    
-    mov ax, color_panel_size
-    mov di, 16
-    mul di
-    mov color_panel_max_x, ax; Конечная x-координата панели цветов = <кол-во цветов> * <размер иконки цвета>
-
-    call draw_color_panel
-    pop ax
-    ret
-draw_interface endp
-
 CODE_SEG ends
 end main
